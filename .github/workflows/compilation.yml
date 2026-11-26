@@ -1,0 +1,83 @@
+# Compilation automatique d'EcoBots par GitHub.
+# À chaque push sur main : GitHub compile le jeu pour Windows et pour macOS, lance les tests,
+# puis met à jour la page de téléchargement « Dernière version » (onglet Releases du dépôt).
+
+name: Compilation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # bouton « Run workflow » dans l'onglet Actions
+
+permissions:
+  contents: write      # nécessaire pour publier la page de téléchargement
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiler (MinGW, comme CLion)
+        run: |
+          cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-static"
+          cmake --build build -j 4
+      - name: Tests du moteur
+        run: build\tests_moteur.exe
+      - name: Préparer le zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force EcoBots_Windows | Out-Null
+          Copy-Item build\ecobots.exe, build\ecobots_graphique.exe EcoBots_Windows\
+          Compress-Archive -Path EcoBots_Windows -DestinationPath EcoBots_Windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EcoBots_Windows
+          path: EcoBots_Windows.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiler
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j 4
+      - name: Tests du moteur
+        run: ./build/tests_moteur
+      - name: Préparer le zip
+        run: |
+          mkdir EcoBots_macOS
+          cp build/ecobots build/ecobots_graphique EcoBots_macOS/
+          zip -r EcoBots_macOS.zip EcoBots_macOS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EcoBots_macOS
+          path: EcoBots_macOS.zip
+
+  publier:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Déplacer l'étiquette « derniere-version » sur ce commit
+        run: |
+          git tag -f derniere-version
+          git push -f origin derniere-version
+      - name: Mettre à jour la page de téléchargement
+        uses: ncipollo/release-action@v1
+        with:
+          tag: derniere-version
+          name: EcoBots — dernière version
+          body: |
+            Version compilée automatiquement à partir du dernier commit sur `main`.
+
+            - **Windows** : télécharger `EcoBots_Windows.zip`, l'extraire, double-cliquer sur `ecobots_graphique.exe` (ou `ecobots.exe` pour la console).
+            - **macOS** : télécharger `EcoBots_macOS.zip`, l'extraire, puis clic droit → Ouvrir sur `ecobots_graphique`.
+          artifacts: "EcoBots_Windows.zip,EcoBots_macOS.zip"
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          prerelease: true
