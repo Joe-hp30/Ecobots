@@ -42,8 +42,9 @@ make tests            # tests automatiques du moteur
 3. Installer raylib : `brew install raylib`
 
 **Windows** :
-- pour **jouer** tout de suite : télécharger `EcoBots_Windows.zip` dans les
-  [Releases](https://github.com/Joe-hp30/Ecobots/releases) ;
+- pour **jouer** tout de suite : télécharger `EcoBots_Windows.zip` sur la page
+  [Dernière version](https://github.com/Joe-hp30/Ecobots/releases/tag/derniere-version)
+  (recompilée automatiquement par GitHub à chaque push sur `main`) ;
 - pour **coder** : suivre le guide pas à pas [docs/INSTALLATION_WINDOWS.md](docs/INSTALLATION_WINDOWS.md)
   (Git, CLion ; raylib est téléchargé et compilé automatiquement par CMake).
 

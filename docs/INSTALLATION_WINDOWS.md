@@ -6,8 +6,8 @@ Deux cas : juste **jouer**, ou **travailler sur le code** avec Git et CLion.
 
 ## 1. Juste jouer (2 minutes)
 
-1. Aller sur la page du dépôt : https://github.com/Joe-hp30/Ecobots
-2. À droite, cliquer sur **Releases**, puis télécharger **`EcoBots_Windows.zip`**.
+1. Ouvrir la page https://github.com/Joe-hp30/Ecobots/releases/tag/derniere-version
+2. Télécharger **`EcoBots_Windows.zip`** (GitHub le recompile tout seul à chaque modification du code).
 3. Clic droit sur le fichier → **Extraire tout**.
 4. Double-cliquer sur **`ecobots_graphique.exe`** (version graphique) ou **`ecobots.exe`** (version console).
 
