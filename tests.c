@@ -160,6 +160,8 @@ static void test_apparition(void)
 static void test_batterie(void)
 {
     t_simulation sim;
+    t_position station = {2, 3};
+    int tours, vu_remorque = 0, chemin_valide = 1;
 
     printf("Batterie et stations de recharge (E3)\n");
     init_simulation(&sim);
@@ -168,22 +170,60 @@ static void test_batterie(void)
     VERIFIER(ajouter_dechet(&sim, 2, 3) == 0, "B1c pas de dechet sur une station");
 
     appliquer_commande(&sim, BAS);
-    VERIFIER(sim.drone.batterie == BATTERIE_MAX_DRONE - 1, "B2  un deplacement use 1 point de batterie");
+    VERIFIER(sim.drone.batterie == BATTERIE_MAX - CONSO_DRONE, "B2  le drone use 2 % par case");
 
-    placer(&sim.drone, 1, 1);
-    sim.drone.batterie = 10;
-    appliquer_commande(&sim, DROITE);    /* (1, 2) : pas une station */
-    VERIFIER(sim.drone.batterie == 9, "B2b un deplacement refuse n'use pas la batterie");
-    placer(&sim.drone, 2, 4);
-    appliquer_commande(&sim, GAUCHE);    /* (2, 3) : station */
-    VERIFIER(sim.drone.batterie == BATTERIE_MAX_DRONE, "B3  passage sur une station : batterie pleine");
+    sim.engin_actif = ROBOT;
+    placer(&sim.robot, 4, 4);
+    appliquer_commande(&sim, DROITE);
+    VERIFIER(sim.robot.batterie == BATTERIE_MAX - 1, "B2b le robot vide use 1 % par case");
+    sim.robot.charge = 3;
+    sim.robot.batterie = 50;
+    appliquer_commande(&sim, DROITE);
+    VERIFIER(sim.robot.batterie == 46, "B2c le robot plein (3 dechets) use 4 % par case");
 
     init_simulation(&sim);
+    sim.drone.batterie = 10;
+    appliquer_commande(&sim, HAUT);    /* (0, 1) */
+    placer(&sim.drone, 0, 0);
+    appliquer_commande(&sim, HAUT);    /* bord : refuse */
+    VERIFIER(sim.drone.batterie == 8, "B2d un deplacement refuse n'use pas la batterie");
+
+    placer(&sim.drone, 2, 4);
+    sim.drone.batterie = 10;
+    appliquer_commande(&sim, GAUCHE);  /* arrive sur la station (2, 3) : 10 - 2 + 25 */
+    VERIFIER(sim.drone.batterie == 33, "B3  recharge progressive : + 25 % par tour sur une station");
+    appliquer_commande(&sim, ATTENDRE);
+    VERIFIER(sim.drone.batterie == 58 && sim.stats.nb_tours == 3, "B3b Espace : un tour passe et la recharge continue");
+    sim.drone.batterie = 90;
+    appliquer_commande(&sim, ATTENDRE);
+    VERIFIER(sim.drone.batterie == BATTERIE_MAX, "B3c la batterie ne depasse pas 100 %");
+
+    /* Panne : un technicien vient a pied chercher le drone */
+    init_simulation(&sim);
     placer(&sim.drone, 4, 4);
-    sim.drone.batterie = 1;
-    appliquer_commande(&sim, DROITE);    /* (4, 5) et batterie a 0 : panne */
-    VERIFIER(sim.drone.pos.lig == 2 && sim.drone.pos.col == 3, "B4  panne : rapatrie a la station la plus proche");
-    VERIFIER(sim.drone.batterie == BATTERIE_MAX_DRONE && sim.stats.nb_pannes == 1, "B4b panne : batterie rechargee et panne comptee");
+    sim.drone.batterie = 2;
+    appliquer_commande(&sim, DROITE);  /* (4, 5), batterie a 0 */
+    VERIFIER(sim.drone.etat == EN_PANNE && sim.stats.nb_pannes == 1, "B4  batterie vide : le drone tombe en panne");
+    VERIFIER(sim.drone.pos.lig == 4 && sim.drone.pos.col == 5, "B4b le drone reste ou il est tombe (pas de teleportation)");
+    VERIFIER(sim.drone.station.lig == 2 && sim.drone.station.col == 3, "B4c le technicien vient de la station la plus proche");
+
+    appliquer_commande(&sim, DROITE);
+    VERIFIER(sim.drone.pos.col == 5 && sim.stats.nb_tours == 1, "B5  un engin en panne ne se pilote plus");
+
+    for (tours = 0; tours < 50 && sim.drone.etat != OPERATIONNEL; tours++) {
+        appliquer_commande(&sim, ATTENDRE);
+        if (sim.drone.etat == REMORQUE) {
+            vu_remorque = 1;
+        }
+        if (!case_franchissable(&sim, sim.drone.technicien.lig, sim.drone.technicien.col)) {
+            chemin_valide = 0;
+        }
+    }
+    VERIFIER(chemin_valide, "B6a le technicien ne marche que sur des cases praticables");
+    VERIFIER(vu_remorque, "B6  le technicien recupere le drone puis le remorque");
+    VERIFIER(sim.drone.etat == OPERATIONNEL && sim.drone.pos.lig == station.lig && sim.drone.pos.col == station.col,
+             "B6b le drone est ramene a la station");
+    VERIFIER(tours >= 6 && sim.drone.batterie == BATTERIE_MAX, "B6c le sauvetage prend du temps, puis batterie pleine");
 
     init_simulation(&sim);
     sim.engin_actif = ROBOT;
@@ -191,7 +231,14 @@ static void test_batterie(void)
     placer(&sim.robot, 12, 12);
     sim.robot.batterie = 1;
     appliquer_commande(&sim, BAS);
-    VERIFIER(sim.robot.charge == 2 && sim.stats.nb_pannes == 1, "B5  le robot en panne garde ses dechets");
+    VERIFIER(sim.robot.etat == EN_PANNE && sim.robot.charge == 2, "B7  le robot en panne garde ses dechets");
+    appliquer_commande(&sim, CHANGER_ENGIN);
+    appliquer_commande(&sim, DROITE);
+    VERIFIER(sim.drone.pos.col == 2, "B7b on peut piloter le drone pendant la panne du robot");
+
+    VERIFIER(distance_trajet(&sim, (t_position) {0, 0}, (t_position) {0, 5}) == 5, "B8  distance a pied en ligne droite");
+    VERIFIER(distance_trajet(&sim, (t_position) {0, 7}, (t_position) {4, 8}) == 9, "B8b le chemin contourne la foret (9 pas au lieu de 5)");
+    VERIFIER(distance_trajet(&sim, (t_position) {0, 0}, (t_position) {1, 7}) == -1, "B8c une foret est inaccessible a pied");
 }
 
 static void test_tour_complet(void)

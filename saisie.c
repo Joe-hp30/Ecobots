@@ -133,6 +133,7 @@ t_commande lire_commande(void)
         case FLECHE_BAS:    case 's': case 'S': return BAS;
         case FLECHE_GAUCHE: case 'q': case 'Q': return GAUCHE;
         case FLECHE_DROITE: case 'd': case 'D': return DROITE;
+        case ' ':                               return ATTENDRE;
         case TOUCHE_TAB:                        return CHANGER_ENGIN;
         case TOUCHE_ECHAP:                      return QUITTER;
         default:                                return AUCUNE;  /* touche inutile */
