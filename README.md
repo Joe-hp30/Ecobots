@@ -98,9 +98,3 @@ git push -u origin nom-de-la-tache    # puis ouvrir une Pull Request sur GitHub
 ```
 
 Règles : jamais de push direct sur `main` ; on ne fusionne que du code qui compile et passe les tests.
-
-## Aide reçue
-
-Une partie du code (architecture, moteur, tests) a été écrite avec l'aide de Claude (IA, Anthropic),
-à partir de notre conception. À déclarer dans la partie « Sources et aide » du rapport final, comme le
-demande le sujet. Chaque membre doit savoir expliquer tout le code à la soutenance.
