@@ -12,25 +12,30 @@
 #include "simulation.h"
 
 /* Réserve de départ (jeu de base). Symboles :
- *   '.' libre   'C' centre de collecte
+ *   '.' libre   'C' centre de collecte   '+' station de recharge
  *   '#' forêt dense   '^' falaise   '~' plan d'eau   (obstacles infranchissables)
  * Elle sera remplacée par une génération aléatoire dans l'extension E1. */
 static const char *RESERVE_INITIALE[NB_LIGNES] = {
-    "..............................",
-    ".C.....####..........^^^......",
-    "......#####.........^^^^^.....",
-    "......####...........^^^......",
-    "..............................",
-    "...##..........~.........##...",
-    "...##.........~~~........##...",
-    "..............~~~~~...........",
-    "...............~~~~...........",
-    ".......^^^.........~~....#....",
-    "......^^^^^.........~~..###...",
-    ".......^^^...........~...#..C.",
-    "..............................",
-    "..##.....................^^...",
-    "..##.....................^^..."
+    "........................................",
+    ".C.....####..........^^^...........+....",
+    "...+..#####.........^^^^^.......####....",
+    "......####...........^^^........####....",
+    "........................................",
+    "...##..........~.........##.........^^..",
+    "...##.........~~~........##.........^^..",
+    "..............~~~~~...................C.",
+    "...............~~~~.....................",
+    ".......^^^.........~~....#.....~~~......",
+    "......^^^^^.........~~..###...~~~~~.....",
+    ".......^^^...........~...#..C..~~~......",
+    "........................................",
+    "..##.....................^^.......##....",
+    "..##.....................^^.......##....",
+    "........+................+..............",
+    "....###..........~~~..............^^^...",
+    "...#####........~~~~~.............^^^.+.",
+    "....###...........~~~........C..........",
+    "........................................"
 };
 
 /* Petite fonction interne : écrit un message pour l'IHM sans dépasser le tableau */
@@ -63,6 +68,8 @@ void init_simulation(t_simulation *sim)
                 sim->grille[l][c] = FALAISE;
             } else if (symbole == '~') {
                 sim->grille[l][c] = EAU;
+            } else if (symbole == '+') {
+                sim->grille[l][c] = STATION;
             } else if (symbole == 'C') {
                 sim->grille[l][c] = CENTRE;
                 /* Le drone et le robot démarrent sur le premier centre trouvé */
@@ -78,6 +85,10 @@ void init_simulation(t_simulation *sim)
         }
     }
 
+    sim->drone.batterie_max = BATTERIE_MAX_DRONE;
+    sim->drone.batterie = BATTERIE_MAX_DRONE;
+    sim->robot.batterie_max = BATTERIE_MAX_ROBOT;
+    sim->robot.batterie = BATTERIE_MAX_ROBOT;
     sim->engin_actif = DRONE;
     sim->en_cours = 1;
     ecrire_message(sim, "Simulation lancee : explorez la reserve avec le drone.");
@@ -199,7 +210,7 @@ int detecter_dechets(t_simulation *sim)
     return nouveaux;
 }
 
-/* Le robot vide ramasse le déchet détecté sur sa case. Renvoie 1 si ramassage. */
+/* Le robot ramasse le déchet détecté sur sa case, s'il lui reste de la place. Renvoie 1 si ramassage. */
 int ramasser_dechet(t_simulation *sim)
 {
     int i;
@@ -212,30 +223,88 @@ int ramasser_dechet(t_simulation *sim)
     if (i == -1 || !sim->dechets[i].detecte) {
         return 0;   /* pas de déchet, ou déchet pas encore repéré par le drone */
     }
-    if (sim->robot.charge) {
-        ecrire_message(sim, "Robot deja plein : deposez d'abord le dechet au centre.");
+    if (sim->robot.charge >= CAPACITE_ROBOT) {
+        ecrire_message(sim, "Robot plein : videz-le dans un centre de collecte (C).");
         return 0;
     }
 
     sim->dechets[i].actif = 0;
-    sim->robot.charge = 1;
-    ecrire_message(sim, "Dechet ramasse. Direction un centre de collecte (C).");
+    sim->robot.charge++;
+    {
+        char texte[TAILLE_MESSAGE];
+        snprintf(texte, sizeof(texte), "Dechet ramasse (%d/%d dans le robot).",
+                 sim->robot.charge, CAPACITE_ROBOT);
+        ecrire_message(sim, texte);
+    }
     return 1;
 }
 
-/* Le robot chargé dépose son déchet s'il est sur un centre. Renvoie 1 si dépôt. */
+/* Le robot chargé vide tous ses déchets s'il est sur un centre. Renvoie le nombre déposé. */
 int deposer_dechet(t_simulation *sim)
 {
-    if (sim == NULL || !sim->robot.charge) {
+    char texte[TAILLE_MESSAGE];
+    int nb;
+
+    if (sim == NULL || sim->robot.charge == 0) {
         return 0;
     }
     if (sim->grille[sim->robot.pos.lig][sim->robot.pos.col] != CENTRE) {
         return 0;
     }
 
+    nb = sim->robot.charge;
     sim->robot.charge = 0;
-    sim->stats.nb_collectes++;
-    ecrire_message(sim, "Dechet depose au centre de collecte.");
+    sim->stats.nb_collectes += nb;
+    snprintf(texte, sizeof(texte), "%d dechet(s) depose(s) au centre de collecte.", nb);
+    ecrire_message(sim, texte);
+    return nb;
+}
+
+/* Remplit la batterie si l'engin est sur une station de recharge. Renvoie 1 si recharge. */
+int recharger_si_station(t_simulation *sim, t_engin *engin)
+{
+    if (sim == NULL || engin == NULL) {
+        return 0;
+    }
+    if (sim->grille[engin->pos.lig][engin->pos.col] != STATION) {
+        return 0;
+    }
+    if (engin->batterie < engin->batterie_max) {
+        engin->batterie = engin->batterie_max;
+        ecrire_message(sim, "Batterie rechargee a 100 %.");
+    }
+    return 1;
+}
+
+/* Si la batterie est vide, l'engin est rapatrié à la station la plus proche
+ * (distance en nombre de cases) et rechargé ; la panne est comptée. Renvoie 1 si panne. */
+int gerer_panne(t_simulation *sim, t_engin *engin)
+{
+    int l, c, distance;
+    int meilleure = -1;
+    t_position station = engin != NULL ? engin->pos : (t_position) {0, 0};
+
+    if (sim == NULL || engin == NULL || engin->batterie > 0) {
+        return 0;
+    }
+
+    for (l = 0; l < NB_LIGNES; l++) {
+        for (c = 0; c < NB_COLONNES; c++) {
+            if (sim->grille[l][c] == STATION) {
+                distance = abs(l - engin->pos.lig) + abs(c - engin->pos.col);
+                if (meilleure == -1 || distance < meilleure) {
+                    meilleure = distance;
+                    station.lig = l;
+                    station.col = c;
+                }
+            }
+        }
+    }
+
+    engin->pos = station;   /* s'il n'y a aucune station, l'engin reste sur place */
+    engin->batterie = engin->batterie_max;
+    sim->stats.nb_pannes++;
+    ecrire_message(sim, "Batterie vide ! Engin rapatrie a la station la plus proche.");
     return 1;
 }
 
@@ -321,17 +390,27 @@ void appliquer_commande(t_simulation *sim, t_commande cmd)
         case BAS:
         case GAUCHE:
         case DROITE:
+        {
+            t_engin *engin = (sim->engin_actif == DRONE) ? &sim->drone : &sim->robot;
+
             sim->message[0] = '\0';
-            if (!deplacer_engin(sim, sim->engin_actif == DRONE ? &sim->drone : &sim->robot, cmd)) {
+            if (!deplacer_engin(sim, engin, cmd)) {
                 ecrire_message(sim, "Deplacement impossible (obstacle ou bord).");
                 return;   /* l'engin n'a pas bougé : pas de tour joué */
             }
+            engin->batterie--;   /* chaque déplacement consomme 1 */
+
             if (sim->engin_actif == DRONE) {
                 detecter_dechets(sim);
             } else if (!deposer_dechet(sim)) {
                 ramasser_dechet(sim);
             }
+
+            if (!recharger_si_station(sim, engin)) {
+                gerer_panne(sim, engin);
+            }
             break;
+        }
 
         default:
             return;   /* AUCUNE ou valeur inconnue : rien ne se passe, pas de tour joué */

@@ -11,12 +11,15 @@
 
 /* ---------- Constantes ---------- */
 
-#define NB_LIGNES          15   /* hauteur de la grille */
-#define NB_COLONNES        30   /* largeur de la grille */
-#define MAX_DECHETS        50   /* nombre max de déchets en même temps */
+#define NB_LIGNES          20   /* hauteur de la grille */
+#define NB_COLONNES        40   /* largeur de la grille */
+#define MAX_DECHETS        80   /* nombre max de déchets en même temps */
 #define PROBA_APPARITION   10   /* chance (en %) qu'un déchet apparaisse à chaque tour */
 #define MAX_ESSAIS_CASE   100   /* essais max pour trouver une case libre au hasard */
-#define TAILLE_MESSAGE     80   /* taille du message affiché par l'IHM */
+#define TAILLE_MESSAGE     90   /* taille du message affiché par l'IHM */
+#define CAPACITE_ROBOT      3   /* nombre de déchets que le robot transporte à la fois */
+#define BATTERIE_MAX_DRONE 60   /* autonomie du drone, en déplacements */
+#define BATTERIE_MAX_ROBOT 80   /* autonomie du robot, en déplacements */
 
 /* ---------- Types ---------- */
 
@@ -27,7 +30,8 @@ typedef enum {
     FORET,
     FALAISE,
     EAU,
-    CENTRE
+    CENTRE,
+    STATION    /* station de recharge des batteries */
 } t_case;
 
 /* Commandes possibles, indépendantes des touches du clavier */
@@ -63,7 +67,9 @@ typedef struct {
 /* Le drone ou le robot */
 typedef struct {
     t_position pos;
-    int charge;    /* robot seulement : 1 s'il transporte un déchet */
+    int charge;          /* robot seulement : nombre de déchets transportés (0 à CAPACITE_ROBOT) */
+    int batterie;        /* déplacements restants avant la panne */
+    int batterie_max;    /* autonomie quand la batterie est pleine */
 } t_engin;
 
 /* Compteurs pour le panneau d'infos et le bilan */
@@ -72,6 +78,7 @@ typedef struct {
     int nb_detectes;
     int nb_collectes;
     int nb_tours;
+    int nb_pannes;       /* batteries tombées à zéro */
 } t_stats;
 
 /* Tout l'état de la simulation */
@@ -107,6 +114,8 @@ int detecter_dechets(t_simulation *sim);
 int ramasser_dechet(t_simulation *sim);
 int deposer_dechet(t_simulation *sim);
 int ajouter_dechet(t_simulation *sim, int lig, int col);
+int recharger_si_station(t_simulation *sim, t_engin *engin);
+int gerer_panne(t_simulation *sim, t_engin *engin);
 int faire_apparaitre_dechet(t_simulation *sim);
 
 /* Un tour complet : applique la commande puis fait évoluer la réserve */

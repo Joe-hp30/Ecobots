@@ -24,6 +24,7 @@
 #define COULEUR_EAU     "\033[1;34m"  /* bleu gras   */
 #define COULEUR_CENTRE  "\033[1;35m"   /* magenta gras */
 #define COULEUR_LIBRE   "\033[90m"     /* gris        */
+#define COULEUR_STATION "\033[1;92m"  /* vert vif gras */
 
 static void effacer_ecran(void)
 {
@@ -67,8 +68,11 @@ void afficher_regles(void)
     printf("REGLES\n\n");
     printf("- Des dechets apparaissent au hasard dans la reserve, mais restent invisibles.\n");
     printf("- Le drone detecte un dechet s'il passe sur sa case ou sur une des 8 cases voisines.\n");
-    printf("- Le robot ramasse un dechet detecte en passant dessus (un seul a la fois),\n");
-    printf("  puis le depose en passant sur un centre de collecte.\n");
+    printf("- Le robot ramasse un dechet detecte en passant dessus (jusqu'a %d a la fois),\n", CAPACITE_ROBOT);
+    printf("  puis les vide tous en passant sur un centre de collecte.\n");
+    printf("- Chaque deplacement use 1 point de batterie (drone : %d, robot : %d).\n", BATTERIE_MAX_DRONE, BATTERIE_MAX_ROBOT);
+    printf("  Passez sur une station de recharge (+) pour la remplir. Batterie vide = panne :\n");
+    printf("  l'engin est rapatrie a la station la plus proche.\n");
     printf("- Ni le drone ni le robot ne traversent les obstacles naturels :\n");
     printf("  forets denses, falaises et plans d'eau.\n\n");
     printf("COMMANDES\n\n");
@@ -76,7 +80,7 @@ void afficher_regles(void)
     printf("  Tab                : passer du drone au robot\n");
     printf("  Echap              : terminer la simulation\n\n");
     printf("LEGENDE\n\n");
-    printf("  D drone   R robot   * dechet detecte   C centre de collecte   . libre\n");
+    printf("  D drone   R robot   * dechet detecte   C centre de collecte   + station de recharge   . libre\n");
     printf("  # foret dense   ^ falaise   ~ plan d'eau\n\n");
     printf("Appuyez sur une touche pour revenir au menu...");
     fflush(stdout);
@@ -107,6 +111,9 @@ static void afficher_case(const t_simulation *sim, int lig, int col)
     } else if (sim->grille[lig][col] == EAU) {
         changer_couleur(COULEUR_EAU);
         printf("~ ");
+    } else if (sim->grille[lig][col] == STATION) {
+        changer_couleur(COULEUR_STATION);
+        printf("+ ");
     } else if (sim->grille[lig][col] == CENTRE) {
         changer_couleur(COULEUR_CENTRE);
         printf("C ");
@@ -117,19 +124,39 @@ static void afficher_case(const t_simulation *sim, int lig, int col)
     changer_couleur(COULEUR_DEFAUT);
 }
 
+/* Dessine une jauge de batterie de 10 carrés, rouge quand il reste moins de 25 % */
+static void afficher_jauge(const t_engin *engin)
+{
+    int i;
+    int pleins = (engin->batterie * 10 + engin->batterie_max - 1) / engin->batterie_max;
+
+    printf("[");
+    changer_couleur(engin->batterie * 4 < engin->batterie_max ? COULEUR_DECHET : COULEUR_STATION);
+    for (i = 0; i < 10; i++) {
+        printf(i < pleins ? "|" : " ");
+    }
+    changer_couleur(COULEUR_DEFAUT);
+    printf("] %d/%d", engin->batterie, engin->batterie_max);
+}
+
 /* Affiche la ligne numéro "ligne" du panneau d'infos, à droite de la grille */
 static void afficher_ligne_panneau(const t_simulation *sim, int ligne)
 {
     switch (ligne) {
         case 0:  printf("   Engin actif : %s", sim->engin_actif == DRONE ? "DRONE" : "ROBOT"); break;
         case 1:  printf("   Tour        : %d", sim->stats.nb_tours); break;
-        case 3:  printf("   Detectes    : %d", sim->stats.nb_detectes); break;
-        case 4:  printf("   En attente  : %d", nb_dechets_en_attente(sim)); break;
-        case 5:  printf("   Collectes   : %d", sim->stats.nb_collectes); break;
-        case 6:  printf("   Robot       : %s", sim->robot.charge ? "charge" : "vide"); break;
-        case 8:  printf("   [Fleches/ZQSD] bouger"); break;
-        case 9:  printf("   [Tab] changer d'engin"); break;
-        case 10: printf("   [Echap] quitter"); break;
+        case 3:  printf("   Drone "); afficher_jauge(&sim->drone); break;
+        case 4:  printf("   Robot "); afficher_jauge(&sim->robot); break;
+        case 6:  printf("   Detectes    : %d", sim->stats.nb_detectes); break;
+        case 7:  printf("   En attente  : %d", nb_dechets_en_attente(sim)); break;
+        case 8:  printf("   Collectes   : %d", sim->stats.nb_collectes); break;
+        case 9:  printf("   Robot       : %d/%d dechets", sim->robot.charge, CAPACITE_ROBOT); break;
+        case 10: printf("   Pannes      : %d", sim->stats.nb_pannes); break;
+        case 12: printf("   [Fleches/ZQSD] bouger"); break;
+        case 13: printf("   [Tab] changer d'engin"); break;
+        case 14: printf("   [Echap] quitter"); break;
+        case 16: printf("   + recharge  C collecte"); break;
+        case 17: printf("   # foret ^ falaise ~ eau"); break;
         default: break;
     }
 }
@@ -167,7 +194,8 @@ void afficher_bilan(const t_simulation *sim)
     printf("  Dechets detectes         : %d\n", sim->stats.nb_detectes);
     printf("  Dechets rapportes        : %d\n", sim->stats.nb_collectes);
     printf("  Detectes non ramasses    : %d\n", nb_dechets_en_attente(sim));
-    printf("  Robot charge a la fin    : %s\n\n", sim->robot.charge ? "oui" : "non");
+    printf("  Pannes de batterie       : %d\n", sim->stats.nb_pannes);
+    printf("  Dechets dans le robot    : %d\n\n", sim->robot.charge);
     printf("Appuyez sur une touche pour revenir au menu...");
     fflush(stdout);
 }

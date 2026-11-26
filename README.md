@@ -4,7 +4,11 @@ Projet Informatique 1 — ING1 ECE, semestre 1 2026-2027.
 Équipe : Joe Humler-Payet, Alexandre Augiers de Crémiers, Ossoan Faret, Corentin Destres.
 
 Simulation en C (mode console) : un drone piloté au clavier détecte les déchets d'une réserve,
-un robot les ramasse et les rapporte à un centre de collecte.
+un robot les ramasse (jusqu'à 3 à la fois) et les rapporte à un centre de collecte.
+Chaque engin a une batterie qui se recharge sur les stations `+`.
+
+La carte fait 20 × 40 cases : agrandir la fenêtre du Terminal à au moins 115 colonnes × 26 lignes
+(Terminal → Réglages → Profils → Fenêtre, ou tirer le coin de la fenêtre).
 
 ## Compiler et lancer
 
@@ -28,7 +32,7 @@ dans la configuration d'exécution pour que les touches soient lues correctement
 | Tab | passer du drone au robot |
 | Échap | terminer la simulation et voir le bilan |
 
-Légende : `D` drone · `R` robot · `*` déchet détecté · `C` centre de collecte · `.` libre
+Légende : `D` drone · `R` robot · `*` déchet détecté · `C` centre de collecte · `+` station de recharge · `.` libre
 Obstacles naturels infranchissables : `#` forêt dense · `^` falaise · `~` plan d'eau
 
 ## Organisation du code
@@ -51,7 +55,8 @@ Pour passer en mode graphique (raylib) ou utiliser `affichage_console.h`, on ne 
 - [x] Tests automatiques du moteur (29 tests)
 - [ ] Extension E1 : génération aléatoire de la réserve (Corentin)
 - [ ] Extension E2 : types de déchets et statistiques (Corentin, affichage : Ossoan)
-- [ ] Extension E3 (bonus) : batterie et stations de recharge
+- [x] Extension E3 : batterie du drone et du robot, stations de recharge, pannes
+- [x] Carte 20 × 40, 4 centres de collecte, robot de capacité 3
 
 ## Travailler avec Git
 

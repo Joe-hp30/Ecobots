@@ -99,9 +99,20 @@ static void test_collecte(void)
     init_simulation(&sim);
     ajouter_dechet(&sim, 4, 10);
     sim.dechets[0].detecte = 1;
+    sim.robot.charge = CAPACITE_ROBOT;
+    placer(&sim.robot, 4, 10);
+    VERIFIER(ramasser_dechet(&sim) == 0 && indice_dechet_en(&sim, 4, 10) != -1, "T9  robot plein : il ne prend pas un dechet de plus");
+
+    init_simulation(&sim);
+    ajouter_dechet(&sim, 4, 10);
+    ajouter_dechet(&sim, 4, 11);
+    sim.dechets[0].detecte = 1;
+    sim.dechets[1].detecte = 1;
     sim.robot.charge = 1;
     placer(&sim.robot, 4, 10);
-    VERIFIER(ramasser_dechet(&sim) == 0 && indice_dechet_en(&sim, 4, 10) != -1, "T9  robot plein : il ne prend pas le 2e dechet");
+    ramasser_dechet(&sim);
+    placer(&sim.robot, 4, 11);
+    VERIFIER(ramasser_dechet(&sim) == 1 && sim.robot.charge == 3, "T9b le robot transporte jusqu'a 3 dechets");
 
     init_simulation(&sim);
     sim.robot.charge = 1;
@@ -113,6 +124,12 @@ static void test_collecte(void)
     sim.robot.charge = 1;
     placer(&sim.robot, 4, 4);
     VERIFIER(deposer_dechet(&sim) == 0 && sim.robot.charge == 1, "T10b pas de depot hors d'un centre");
+
+    init_simulation(&sim);
+    sim.robot.charge = 3;
+    placer(&sim.robot, 7, 38);   /* autre centre de collecte */
+    VERIFIER(deposer_dechet(&sim) == 3 && sim.robot.charge == 0 && sim.stats.nb_collectes == 3,
+             "T10c le robot vide ses 3 dechets d'un coup, dans n'importe quel centre");
 }
 
 static void test_apparition(void)
@@ -138,6 +155,43 @@ static void test_apparition(void)
 
     sim.dechets[0].actif = 0;   /* comme si le robot l'avait ramasse */
     VERIFIER(ajouter_dechet(&sim, 14, 29) == 1 && sim.nb_dechets == MAX_DECHETS, "T11e la place d'un dechet ramasse est reutilisee");
+}
+
+static void test_batterie(void)
+{
+    t_simulation sim;
+
+    printf("Batterie et stations de recharge (E3)\n");
+    init_simulation(&sim);
+    VERIFIER(sim.grille[2][3] == STATION && sim.grille[17][38] == STATION, "B1  les stations de recharge sont chargees");
+    VERIFIER(case_franchissable(&sim, 2, 3), "B1b un engin peut aller sur une station");
+    VERIFIER(ajouter_dechet(&sim, 2, 3) == 0, "B1c pas de dechet sur une station");
+
+    appliquer_commande(&sim, BAS);
+    VERIFIER(sim.drone.batterie == BATTERIE_MAX_DRONE - 1, "B2  un deplacement use 1 point de batterie");
+
+    placer(&sim.drone, 1, 1);
+    sim.drone.batterie = 10;
+    appliquer_commande(&sim, DROITE);    /* (1, 2) : pas une station */
+    VERIFIER(sim.drone.batterie == 9, "B2b un deplacement refuse n'use pas la batterie");
+    placer(&sim.drone, 2, 4);
+    appliquer_commande(&sim, GAUCHE);    /* (2, 3) : station */
+    VERIFIER(sim.drone.batterie == BATTERIE_MAX_DRONE, "B3  passage sur une station : batterie pleine");
+
+    init_simulation(&sim);
+    placer(&sim.drone, 4, 4);
+    sim.drone.batterie = 1;
+    appliquer_commande(&sim, DROITE);    /* (4, 5) et batterie a 0 : panne */
+    VERIFIER(sim.drone.pos.lig == 2 && sim.drone.pos.col == 3, "B4  panne : rapatrie a la station la plus proche");
+    VERIFIER(sim.drone.batterie == BATTERIE_MAX_DRONE && sim.stats.nb_pannes == 1, "B4b panne : batterie rechargee et panne comptee");
+
+    init_simulation(&sim);
+    sim.engin_actif = ROBOT;
+    sim.robot.charge = 2;
+    placer(&sim.robot, 12, 12);
+    sim.robot.batterie = 1;
+    appliquer_commande(&sim, BAS);
+    VERIFIER(sim.robot.charge == 2 && sim.stats.nb_pannes == 1, "B5  le robot en panne garde ses dechets");
 }
 
 static void test_tour_complet(void)
@@ -181,6 +235,7 @@ int main(void)
     test_detection();
     test_collecte();
     test_apparition();
+    test_batterie();
     test_tour_complet();
     printf("\n%d test(s) reussi(s), %d echec(s)\n", nb_reussis, nb_echecs);
     return nb_echecs == 0 ? 0 : 1;
