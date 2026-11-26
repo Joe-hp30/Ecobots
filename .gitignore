@@ -1,5 +1,6 @@
 # Fichiers compilés
 ecobots
+ecobots_graphique
 lancer_tests
 *.exe
 *.o
