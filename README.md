@@ -41,8 +41,11 @@ make tests            # tests automatiques du moteur
    ```
 3. Installer raylib : `brew install raylib`
 
-**Windows** : ouvrir le dossier dans CLion (il lit `CMakeLists.txt`) et lancer la cible `ecobots`
-(ou `tests_moteur`). La cible `ecobots_graphique` apparaît si raylib est installé.
+**Windows** :
+- pour **jouer** tout de suite : télécharger `EcoBots_Windows.zip` dans les
+  [Releases](https://github.com/Joe-hp30/Ecobots/releases) ;
+- pour **coder** : suivre le guide pas à pas [docs/INSTALLATION_WINDOWS.md](docs/INSTALLATION_WINDOWS.md)
+  (Git, CLion ; raylib est téléchargé et compilé automatiquement par CMake).
 
 ## Règles
 
@@ -82,8 +85,8 @@ Ecobots/
 ├── affichage_raylib.h/.c version graphique : dessin de la réserve et du panneau (raylib)
 ├── tests.c               tests automatiques du moteur
 ├── Makefile              compilation macOS / Linux
-├── CMakeLists.txt        compilation Windows (CLion)
-└── docs/                 rendu de mi-parcours, captures d'écran
+├── CMakeLists.txt        compilation Windows (CLion), télécharge raylib si besoin
+└── docs/                 guide d'installation Windows, rendu de mi-parcours, captures
 ```
 
 Les deux versions partagent **exactement le même moteur** `simulation.c` : seuls l'affichage et la saisie
