@@ -1,0 +1,17 @@
+# Fichiers compilés
+ecobots
+lancer_tests
+*.exe
+*.o
+*.out
+*.dSYM/
+
+# CLion / CMake
+cmake-build-*/
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
