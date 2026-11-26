@@ -20,10 +20,13 @@
 
 /* ---------- Types ---------- */
 
-/* Nature du terrain d'une case */
+/* Nature du terrain d'une case.
+ * FORET, FALAISE et EAU sont des obstacles naturels infranchissables. */
 typedef enum {
     LIBRE,
-    OBSTACLE,
+    FORET,
+    FALAISE,
+    EAU,
     CENTRE
 } t_case;
 
@@ -91,6 +94,7 @@ void init_simulation(t_simulation *sim);
 
 /* Tests sur les cases */
 int est_dans_grille(int lig, int col);
+int est_obstacle(t_case terrain);
 int case_franchissable(const t_simulation *sim, int lig, int col);
 int indice_dechet_en(const t_simulation *sim, int lig, int col);
 int dechet_visible_en(const t_simulation *sim, int lig, int col);

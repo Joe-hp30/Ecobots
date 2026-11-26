@@ -28,7 +28,8 @@ dans la configuration d'exécution pour que les touches soient lues correctement
 | Tab | passer du drone au robot |
 | Échap | terminer la simulation et voir le bilan |
 
-Légende : `D` drone · `R` robot · `*` déchet détecté · `#` obstacle · `C` centre de collecte · `.` libre
+Légende : `D` drone · `R` robot · `*` déchet détecté · `C` centre de collecte · `.` libre
+Obstacles naturels infranchissables : `#` forêt dense · `^` falaise · `~` plan d'eau
 
 ## Organisation du code
 

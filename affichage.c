@@ -19,8 +19,10 @@
 #define COULEUR_DRONE   "\033[1;36m"   /* cyan gras   */
 #define COULEUR_ROBOT   "\033[1;33m"   /* jaune gras  */
 #define COULEUR_DECHET  "\033[1;31m"   /* rouge gras  */
-#define COULEUR_OBSTACLE "\033[32m"    /* vert        */
-#define COULEUR_CENTRE  "\033[1;34m"   /* bleu gras   */
+#define COULEUR_FORET   "\033[32m"    /* vert        */
+#define COULEUR_FALAISE "\033[37m"    /* gris clair  */
+#define COULEUR_EAU     "\033[1;34m"  /* bleu gras   */
+#define COULEUR_CENTRE  "\033[1;35m"   /* magenta gras */
 #define COULEUR_LIBRE   "\033[90m"     /* gris        */
 
 static void effacer_ecran(void)
@@ -67,13 +69,15 @@ void afficher_regles(void)
     printf("- Le drone detecte un dechet s'il passe sur sa case ou sur une des 8 cases voisines.\n");
     printf("- Le robot ramasse un dechet detecte en passant dessus (un seul a la fois),\n");
     printf("  puis le depose en passant sur un centre de collecte.\n");
-    printf("- Ni le drone ni le robot ne traversent les obstacles.\n\n");
+    printf("- Ni le drone ni le robot ne traversent les obstacles naturels :\n");
+    printf("  forets denses, falaises et plans d'eau.\n\n");
     printf("COMMANDES\n\n");
     printf("  Fleches ou Z Q S D : deplacer l'engin actif\n");
     printf("  Tab                : passer du drone au robot\n");
     printf("  Echap              : terminer la simulation\n\n");
     printf("LEGENDE\n\n");
-    printf("  D drone   R robot   * dechet detecte   # obstacle   C centre   . libre\n\n");
+    printf("  D drone   R robot   * dechet detecte   C centre de collecte   . libre\n");
+    printf("  # foret dense   ^ falaise   ~ plan d'eau\n\n");
     printf("Appuyez sur une touche pour revenir au menu...");
     fflush(stdout);
 }
@@ -94,9 +98,15 @@ static void afficher_case(const t_simulation *sim, int lig, int col)
     } else if (dechet_visible_en(sim, lig, col)) {
         changer_couleur(COULEUR_DECHET);
         printf("* ");
-    } else if (sim->grille[lig][col] == OBSTACLE) {
-        changer_couleur(COULEUR_OBSTACLE);
+    } else if (sim->grille[lig][col] == FORET) {
+        changer_couleur(COULEUR_FORET);
         printf("# ");
+    } else if (sim->grille[lig][col] == FALAISE) {
+        changer_couleur(COULEUR_FALAISE);
+        printf("^ ");
+    } else if (sim->grille[lig][col] == EAU) {
+        changer_couleur(COULEUR_EAU);
+        printf("~ ");
     } else if (sim->grille[lig][col] == CENTRE) {
         changer_couleur(COULEUR_CENTRE);
         printf("C ");

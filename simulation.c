@@ -11,24 +11,26 @@
 #include <string.h>
 #include "simulation.h"
 
-/* Réserve de départ (jeu de base). '#' = obstacle, 'C' = centre de collecte, '.' = libre.
+/* Réserve de départ (jeu de base). Symboles :
+ *   '.' libre   'C' centre de collecte
+ *   '#' forêt dense   '^' falaise   '~' plan d'eau   (obstacles infranchissables)
  * Elle sera remplacée par une génération aléatoire dans l'extension E1. */
 static const char *RESERVE_INITIALE[NB_LIGNES] = {
     "..............................",
-    ".C.....####..........###......",
-    "......#####.........#####.....",
-    "......####...........###......",
+    ".C.....####..........^^^......",
+    "......#####.........^^^^^.....",
+    "......####...........^^^......",
     "..............................",
     "...##..........~.........##...",
     "...##.........~~~........##...",
-    "..............~~~~............",
-    "...............~~.............",
-    ".......###...............#....",
-    "......#####.............###...",
-    ".......###...............#..C.",
+    "..............~~~~~...........",
+    "...............~~~~...........",
+    ".......^^^.........~~....#....",
+    "......^^^^^.........~~..###...",
+    ".......^^^...........~...#..C.",
     "..............................",
-    "..##.....................##...",
-    "..##.....................##..."
+    "..##.....................^^...",
+    "..##.....................^^..."
 };
 
 /* Petite fonction interne : écrit un message pour l'IHM sans dépasser le tableau */
@@ -55,8 +57,12 @@ void init_simulation(t_simulation *sim)
     for (l = 0; l < NB_LIGNES; l++) {
         for (c = 0; c < NB_COLONNES; c++) {
             char symbole = RESERVE_INITIALE[l][c];
-            if (symbole == '#' || symbole == '~') {      /* '~' = plan d'eau, infranchissable */
-                sim->grille[l][c] = OBSTACLE;
+            if (symbole == '#') {
+                sim->grille[l][c] = FORET;
+            } else if (symbole == '^') {
+                sim->grille[l][c] = FALAISE;
+            } else if (symbole == '~') {
+                sim->grille[l][c] = EAU;
             } else if (symbole == 'C') {
                 sim->grille[l][c] = CENTRE;
                 /* Le drone et le robot démarrent sur le premier centre trouvé */
@@ -85,13 +91,19 @@ int est_dans_grille(int lig, int col)
     return lig >= 0 && lig < NB_LIGNES && col >= 0 && col < NB_COLONNES;
 }
 
+/* 1 si le terrain est un obstacle naturel (forêt, falaise, plan d'eau) */
+int est_obstacle(t_case terrain)
+{
+    return terrain == FORET || terrain == FALAISE || terrain == EAU;
+}
+
 /* 1 si un engin peut aller sur la case (dans la grille et pas un obstacle) */
 int case_franchissable(const t_simulation *sim, int lig, int col)
 {
     if (sim == NULL || !est_dans_grille(lig, col)) {
         return 0;
     }
-    return sim->grille[lig][col] != OBSTACLE;
+    return !est_obstacle(sim->grille[lig][col]);
 }
 
 /* Indice du déchet actif situé en (lig, col), ou -1 s'il n'y en a pas */

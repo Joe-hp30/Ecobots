@@ -42,6 +42,13 @@ static void test_deplacements(void)
     VERIFIER(deplacer_engin(&sim, &sim.drone, BAS) == 0, "T3  deplacer_engin renvoie 0 contre un obstacle");
     VERIFIER(sim.drone.pos.lig == 0, "T3  le drone reste sur place");
 
+    VERIFIER(sim.grille[1][7] == FORET && sim.grille[1][21] == FALAISE && sim.grille[7][15] == EAU,
+             "T1  les trois obstacles naturels sont bien charges");
+    placer(&sim.drone, 0, 21);   /* falaise en (1, 21) */
+    VERIFIER(deplacer_engin(&sim, &sim.drone, BAS) == 0, "T3e le drone ne traverse pas une falaise");
+    placer(&sim.drone, 8, 14);   /* eau en (8, 15) */
+    VERIFIER(deplacer_engin(&sim, &sim.drone, DROITE) == 0 && sim.drone.pos.col == 14, "T3f le drone ne traverse pas un plan d'eau");
+
     placer(&sim.robot, 4, 0);
     VERIFIER(deplacer_engin(&sim, &sim.robot, GAUCHE) == 0, "T3b le robot ne sort pas par le bord gauche");
     VERIFIER(deplacer_engin(&sim, &sim.robot, DROITE) == 1 && sim.robot.pos.col == 1, "T3c deplacement valide");
@@ -116,7 +123,8 @@ static void test_apparition(void)
     printf("Apparition des dechets (F5)\n");
     init_simulation(&sim);
 
-    VERIFIER(ajouter_dechet(&sim, 1, 7) == 0, "T11a pas de dechet sur un obstacle");
+    VERIFIER(ajouter_dechet(&sim, 1, 7) == 0, "T11a pas de dechet dans une foret");
+    VERIFIER(ajouter_dechet(&sim, 1, 21) == 0 && ajouter_dechet(&sim, 7, 15) == 0, "T11a pas de dechet sur une falaise ni dans l'eau");
     VERIFIER(ajouter_dechet(&sim, 1, 1) == 0, "T11b pas de dechet sur un centre ni sous un engin");
     VERIFIER(ajouter_dechet(&sim, -1, 3) == 0 && ajouter_dechet(&sim, 3, NB_COLONNES) == 0, "T11c pas de dechet hors grille");
 
