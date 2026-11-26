@@ -93,9 +93,20 @@ static int lire_evenement(int *x, int *y)
 #include <termios.h>
 #include <unistd.h>
 #include <time.h>
+#include <signal.h>
+#include <stdlib.h>
 
 static struct termios reglages_origine;
 static int mode_brut_actif = 0;
+
+/* Si le programme est interrompu (Ctrl+C, fenêtre fermée...), on remet quand même
+ * le terminal en état avant de quitter : sinon il resterait sans écho et en mode souris. */
+static void interruption(int signal_recu)
+{
+    (void) signal_recu;
+    saisie_terminer();
+    _exit(EXIT_FAILURE);
+}
 
 /* Terminal en mode "touche par touche", sans écho, lecture non bloquante, souris activée */
 void saisie_initialiser(void)
@@ -112,12 +123,16 @@ void saisie_initialiser(void)
     }
     printf("\033[?1000h\033[?1006h\033[?25l");   /* clics souris (SGR) + curseur caché */
     fflush(stdout);
+
+    signal(SIGINT, interruption);    /* Ctrl+C */
+    signal(SIGTERM, interruption);
+    signal(SIGHUP, interruption);    /* fenêtre du Terminal fermée */
 }
 
 /* Remet le terminal comme avant : à faire impérativement en quittant */
 void saisie_terminer(void)
 {
-    printf("\033[?1000l\033[?1006l\033[?25h");   /* souris désactivée + curseur visible */
+    printf("\033[0m\033[?1000l\033[?1006l\033[?25h");   /* couleurs, souris, curseur : comme avant */
     fflush(stdout);
     if (mode_brut_actif) {
         tcsetattr(STDIN_FILENO, TCSANOW, &reglages_origine);

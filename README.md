@@ -26,7 +26,20 @@ make tests            # tests automatiques du moteur
 ```
 
 - Version console : agrandir la fenêtre du Terminal à au moins **125 colonnes × 23 lignes**.
-- Version graphique sur Mac : installer raylib une seule fois avec `brew install raylib`.
+  Quitter avec Échap (si le Terminal se comporte bizarrement après un plantage, taper `reset`).
+
+### Version graphique sur Mac : installer raylib (une seule fois)
+
+1. Installer Homebrew (le gestionnaire de paquets du Mac) ; il demande le mot de passe de session :
+   ```
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. Sur un Mac Apple (M1, M2...), rendre la commande `brew` disponible :
+   ```
+   echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+   eval "$(/opt/homebrew/bin/brew shellenv)"
+   ```
+3. Installer raylib : `brew install raylib`
 
 **Windows** : ouvrir le dossier dans CLion (il lit `CMakeLists.txt`) et lancer la cible `ecobots`
 (ou `tests_moteur`). La cible `ecobots_graphique` apparaît si raylib est installé.

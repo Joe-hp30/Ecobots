@@ -26,6 +26,10 @@ ecobots: $(SOURCES_CONSOLE) simulation.h affichage.h saisie.h
 	$(CC) $(CFLAGS) -o ecobots $(SOURCES_CONSOLE)
 
 graphique: $(SOURCES_GRAPHIQUE) simulation.h affichage_raylib.h
+ifeq ($(shell uname),Darwin)
+	@test -n "$(BREW)" || { echo ""; echo "Homebrew n'est pas installe : voir la section 'Version graphique' du README."; echo ""; exit 1; }
+	@test -f "$(BREW)/include/raylib.h" || { echo ""; echo "raylib n'est pas installe. Tapez :  brew install raylib"; echo ""; exit 1; }
+endif
 	$(CC) $(CFLAGS) -o ecobots_graphique $(SOURCES_GRAPHIQUE) $(RAYLIB)
 
 tests: tests.c simulation.c simulation.h
